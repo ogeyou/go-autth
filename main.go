@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"log"
+
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -13,7 +13,7 @@ func main() {
 	router := mux.NewRouter()
 	fmt.Println("Start server ...")
 	router.HandleFunc("/api/registration", handlers.UserRegistration)
-log.Fatal(http.ListenAndServe(":8081", router))
+http.ListenAndServe(":8081", router)
 
 	
 

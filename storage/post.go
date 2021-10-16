@@ -17,7 +17,7 @@ func UserCreated(user model.User) int64 {
 
 	var id int64
 
-	err := dbpool.QueryRow(ctx, `INSERT INTO users (login, email, password) VALUES($1, $2, $3) returning login;`, user.Login, user.Email, user.Password).Scan(&id)
+	_,err := dbpool.Exec(ctx, "INSERT INTO users (login, email, password) VALUES($1, $2, $3)", user.Login, user.Email, user.Password)
 
 	if err != nil {
 		log.Fatalf("Ошибка при добавлении нового пользователя. %v", err)
