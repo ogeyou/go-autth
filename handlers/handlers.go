@@ -14,6 +14,8 @@ func UserRegistration(w http.ResponseWriter, r *http.Request) {
 	UserCreated()
 }
 
+
+
 func UserLogin(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	fmt.Fprintf(w, "This Login page")
