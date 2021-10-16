@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/ogeyou/go-autth.git/model"
+	"github.com/ogeyou/go-autth.git/storage"
 )
 
 func UserRegistration(w http.ResponseWriter, r *http.Request) {
