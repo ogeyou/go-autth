@@ -1,8 +1,11 @@
+package main
+
 import (
 	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/ogeyou/go-autth.git/handlers"
 )
 
 func main() {

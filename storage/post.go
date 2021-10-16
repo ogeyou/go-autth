@@ -5,12 +5,14 @@ import (
 	"fmt"
 
 	"log"
+
+	"github.com/ogeyou/go-autth.git/model"
 )
 
 func UserCreated(user model.User) int64 {
 	// Соединение с экземпляром Postgres
 	ctx := context.Background()
-	dbpool := database.Connect(ctx)
+	dbpool := storage.Connect(ctx)
 	defer dbpool.Close()
 
 	var id int64
