@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"math/rand"
 	"net/http"
@@ -44,27 +43,20 @@ func UserCreated(user model.User) int64 {
 	defer dbpool.Close()
 
 	salt := RandStringRunes(8)
-	var id int64
+
 	pass := hashPass(user.Password, salt)
+	var id int64
 
-	const sql = "INSERT INTO users (login, email, password) VALUES($1, $2, $3)"
+	const sql = "INSERT INTO users (login, email, password) VALUES($1, $2, $3) RETURNING id"
 
-	result, err := dbpool.Exec(ctx, sql, user.Login, user.Email, pass)
+	err := dbpool.QueryRow(ctx, sql, user.Login, user.Email, pass).Scan(&id)
 	var w http.ResponseWriter
 	if err != nil {
 		log.Println("Ощибка при добавлении нового пользователя в базу данных", err)
 		http.Error(w, "Ощибка на сервере при добавлении нового пользователя в базу данных", http.StatusInternalServerError)
-		return 0
 	}
+	
+	UserID := id
 
-	affected := result.RowsAffected()
-	if affected == 0 {
-		http.Error(w, "Looks like user exists", http.StatusBadRequest)
-		return 1
-	}
-
-	fmt.Printf("%T\n", result)
-	fmt.Printf("Новый пользователь успешно прошёл регистрацию %v\n", id)
-
-	return id
+	return UserID
 }
