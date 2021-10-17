@@ -43,9 +43,12 @@ func CreateSession(w http.ResponseWriter, r *http.Request, dbpol *pgxpool.Pool, 
 	ctx := context.Background()
 	dbpool := psql.Connect(ctx)
 	defer dbpool.Close()
-
+	fmt.Println("Смотри, значение передается или нет куки", insertID)
 	sessID := storage.RandStringRunes(32)
-	dbpol.Exec(ctx, "INSERT INTO sessions(id, user_id) VALUES($1, $2)", sessID, insertID)
+	_, err := dbpool.Exec(ctx, "insert into sessions(id, user_id) VALUES($1, $2);", sessID, insertID)
+	if err != nil{
+		fmt.Println(err)		
+	}
 
 	cookie := &http.Cookie{
 		Name:    "session_id",
@@ -68,4 +71,3 @@ func Courses(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Поздравляем, Вы зарегестрированы!")
 	w.WriteHeader(http.StatusOK)
 }
-
