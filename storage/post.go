@@ -32,26 +32,26 @@ var (
 	letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 )
 
-func UserCreated(user model.User)  {
+func UserCreated(user model.User) int64 {
 	// Соединение с экземпляром Postgres
 	ctx := context.Background()
 	dbpool := psql.Connect(ctx)
 	defer dbpool.Close()
 
 	salt := RandStringRunes(8)
-	
+	var id int64
 	pass := hashPass(user.Password, salt)
 
 	const sql = "INSERT INTO users (login, email, password) VALUES($1, $2, $3)"
 
-	result, err := dbpool.Exec(ctx, sql, user.Login, user.Email, pass)
+	_, err := dbpool.Exec(ctx, sql, user.Login, user.Email, pass)
 
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Printf("%T\n", result)
-	fmt.Printf("Новый пользователь успешно прошёл регистрацию %v\n")
+	fmt.Printf("%T\n", id)
+	fmt.Printf("Новый пользователь успешно прошёл регистрацию %v\n", id)
 
-	return 
+	return id
 }
 
