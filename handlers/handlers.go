@@ -32,7 +32,6 @@ var (
 		"/user/login":  struct{}{},
 		"/user/logout": struct{}{},
 		"/user/reg":    struct{}{},
-		"/courses":    struct{}{},
 		"/":            struct{}{},
 	}
 )
@@ -40,23 +39,14 @@ var (
 var (
 	ErrNoAuth = errors.New("No session found")
 )
-
-func AuthMiddleware(dbpool *pgxpool.Pool, next http.Handler) http.Handler {
-
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if _, ok := noAuthUrls[r.URL.Path]; ok {
-			next.ServeHTTP(w, r)
-			return
-		}
-		sess, err := CheckSession(dbpool, r)
-		if err != nil {
-			http.Error(w, "Вы не авторизованы", http.StatusUnauthorized)
-			return
-		}
-		ctx := context.WithValue(r.Context(), sessionKey, sess)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
+func SessionFromContext(ctx context.Context) (*Session, error) {
+	sess, ok := ctx.Value(sessionKey).(*Session)
+	if !ok {
+		return nil, ErrNoAuth
+	}
+	return sess, nil
 }
+
 func CheckSession(dbpool *pgxpool.Pool, r *http.Request) (*Session, error) {
 	ctx := context.Background()
 
@@ -105,13 +95,7 @@ func CreateSession(w http.ResponseWriter, r *http.Request, dbpol *pgxpool.Pool, 
 	http.SetCookie(w, cookie)
 	return nil
 }
-func SessionFromContext(ctx context.Context) (*Session, error) {
-	sess, ok := ctx.Value(sessionKey).(*Session)
-	if !ok {
-		return nil, ErrNoAuth
-	}
-	return sess, nil
-}
+
 
 func DestroySession(w http.ResponseWriter, r *http.Request, dbpol *pgxpool.Pool) error {
 	ctx := context.Background()
@@ -130,11 +114,26 @@ func DestroySession(w http.ResponseWriter, r *http.Request, dbpol *pgxpool.Pool)
 	http.SetCookie(w, &cookie)
 	return nil
 }
+func AuthMiddleware(dbpool *pgxpool.Pool, next http.Handler) http.Handler {
 
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := noAuthUrls[r.URL.Path]; ok {
+			next.ServeHTTP(w, r)
+			return
+		}
+		sess, err := CheckSession(dbpool, r)
+		if err != nil {
+			http.Error(w, "Вы не авторизованы", http.StatusUnauthorized)
+			return
+		}
+		ctx := context.WithValue(r.Context(), sessionKey, sess)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
 func Index(w http.ResponseWriter, r *http.Request) {
 	_, err := SessionFromContext(r.Context())
 	if err != nil {
-		http.Redirect(w, r, "/user/login", http.StatusFound)
+		http.Redirect(w, r, "/user/login/", http.StatusFound)
 		return
 	}
 	http.Redirect(w, r, "/courses/", http.StatusFound)
@@ -153,16 +152,8 @@ func UserLogout(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserLogin(w http.ResponseWriter, r *http.Request) {
-	ctx := context.Background()
-	dbpool := psql.Connect(ctx)
-	defer dbpool.Close()
 
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	fmt.Fprintf(w, "This Login page")
-	w.WriteHeader(http.StatusOK)
-
-	DestroySession(w, r, dbpool)
-	http.Redirect(w, r, "/user/login", http.StatusFound)
 }
 
 func UserRegistration(w http.ResponseWriter, r *http.Request) {
