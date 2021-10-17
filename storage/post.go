@@ -56,6 +56,7 @@ func UserCreated(user model.User) int64 {
 		http.Error(w, "Ощибка на сервере при добавлении нового пользователя в базу данных", http.StatusInternalServerError)
 	}
 	
+	
 	UserID := id
 
 	return UserID

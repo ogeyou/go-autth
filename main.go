@@ -16,6 +16,7 @@ func main() {
 
 	router.HandleFunc("/api/registration", handlers.UserRegistration)
 	router.HandleFunc("/courses", handlers.Courses)
+	router.HandleFunc("/", handlers.Index)
 	// router.HandleFunc("/api/login", handlers.UserLogin)
 
 	http.ListenAndServe(":8081", router)

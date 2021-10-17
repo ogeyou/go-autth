@@ -6,6 +6,7 @@ import (
 
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -16,6 +17,33 @@ import (
 	"github.com/ogeyou/go-autth.git/storage"
 	"github.com/ogeyou/go-autth.git/storage/psql"
 )
+type Session struct {
+	UserID uint32
+	ID     string
+}
+type ctxKey int
+
+const sessionKey ctxKey = 1
+
+var (
+	ErrNoAuth = errors.New("No session found")
+)
+
+func SessionFromContext(ctx context.Context) (*Session, error) {
+	sess, ok := ctx.Value(sessionKey).(*Session)
+	if !ok {
+		return nil, ErrNoAuth
+	}
+	return sess, nil
+}
+func Index(w http.ResponseWriter, r *http.Request) {
+	_, err := SessionFromContext(r.Context())
+	if err != nil {
+		http.Redirect(w, r, "/user/login", http.StatusFound)
+		return
+	}
+	http.Redirect(w, r, "/courses", http.StatusFound)
+}
 
 func UserRegistration(w http.ResponseWriter, r *http.Request) {
 
@@ -31,21 +59,21 @@ func UserRegistration(w http.ResponseWriter, r *http.Request) {
 		log.Printf("")
 	}
 
-	insertID := storage.UserCreated(user)
-	fmt.Println("Уже чуть ближе к успеху ", insertID)
+	UserID := storage.UserCreated(user)
+	fmt.Println("Уже чуть ближе к успеху ", UserID)
 
-	CreateSession(w, r, dbpool, uint32(insertID))
+	CreateSession(w, r, dbpool, uint32(UserID))
 	http.Redirect(w, r, "/courses", http.StatusFound)
 
 }
 
-func CreateSession(w http.ResponseWriter, r *http.Request, dbpol *pgxpool.Pool, insertID uint32) error {
+func CreateSession(w http.ResponseWriter, r *http.Request, dbpol *pgxpool.Pool, UserID uint32) error {
 	ctx := context.Background()
 	dbpool := psql.Connect(ctx)
 	defer dbpool.Close()
-	fmt.Println("Смотри, значение передается или нет куки", insertID)
+	fmt.Println("Смотри, значение передается или нет куки", UserID)
 	sessID := storage.RandStringRunes(32)
-	_, err := dbpool.Exec(ctx, "insert into sessions(id, user_id) VALUES($1, $2);", sessID, insertID)
+	_, err := dbpool.Exec(ctx, "insert into sessions(id, user_id) VALUES($1, $2);", sessID, UserID)
 	if err != nil{
 		fmt.Println(err)		
 	}
@@ -70,4 +98,5 @@ func Courses(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	fmt.Fprintf(w, "Поздравляем, Вы зарегестрированы!")
 	w.WriteHeader(http.StatusOK)
-}
+}	
+
