@@ -20,8 +20,8 @@ import (
 )
 
 type Session struct {
-	UserID uint32
-	ID     string
+	UserID uint32 `json:"user_id,omitempty"`
+	ID     string `json:"id,omitempty"`
 }
 type ctxKey int
 
@@ -39,6 +39,7 @@ var (
 var (
 	ErrNoAuth = errors.New("No session found")
 )
+
 func SessionFromContext(ctx context.Context) (*Session, error) {
 	sess, ok := ctx.Value(sessionKey).(*Session)
 	if !ok {
@@ -48,8 +49,8 @@ func SessionFromContext(ctx context.Context) (*Session, error) {
 }
 
 func CheckSession(dbpool *pgxpool.Pool, r *http.Request) (*Session, error) {
-	ctx := context.Background()
 
+	ctx := context.Background()
 
 	sessionCookie, err := r.Cookie("session_id")
 	if err == http.ErrNoCookie {
@@ -75,9 +76,9 @@ func CheckSession(dbpool *pgxpool.Pool, r *http.Request) (*Session, error) {
 	return sess, nil
 }
 
-func CreateSession(w http.ResponseWriter, r *http.Request, dbpol *pgxpool.Pool, UserID uint32) error {
+func CreateSession(w http.ResponseWriter, r *http.Request, dbpool *pgxpool.Pool, UserID uint32) error {
+
 	ctx := context.Background()
-	dbpool := psql.Connect(ctx)
 	defer dbpool.Close()
 	fmt.Println("Смотри, значение передается или нет куки", UserID)
 	sessID := storage.RandStringRunes(32)
@@ -96,13 +97,14 @@ func CreateSession(w http.ResponseWriter, r *http.Request, dbpol *pgxpool.Pool, 
 	return nil
 }
 
+func DestroySession(w http.ResponseWriter, r *http.Request, dbpool *pgxpool.Pool) error {
 
-func DestroySession(w http.ResponseWriter, r *http.Request, dbpol *pgxpool.Pool) error {
 	ctx := context.Background()
-	dbpool := psql.Connect(ctx)
 	defer dbpool.Close()
 	sess, err := SessionFromContext(r.Context())
-	if err == nil {
+	if err != nil {
+		fmt.Println("EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE", err)
+	} else {
 		dbpool.Exec(ctx, "DELETE FROM sessions WHERE user_id = $1", sess.ID)
 		fmt.Println("Данные куки удалены из базы данных")
 	}
@@ -123,6 +125,7 @@ func AuthMiddleware(dbpool *pgxpool.Pool, next http.Handler) http.Handler {
 		}
 		sess, err := CheckSession(dbpool, r)
 		if err != nil {
+			log.Println("Сообщение от гуфера - Вы не прошлт проверку Авторизации")
 			http.Error(w, "Вы не авторизованы", http.StatusUnauthorized)
 			return
 		}
@@ -131,6 +134,7 @@ func AuthMiddleware(dbpool *pgxpool.Pool, next http.Handler) http.Handler {
 	})
 }
 func Index(w http.ResponseWriter, r *http.Request) {
+
 	_, err := SessionFromContext(r.Context())
 	if err != nil {
 		http.Redirect(w, r, "/user/login/", http.StatusFound)
@@ -140,20 +144,47 @@ func Index(w http.ResponseWriter, r *http.Request) {
 }
 
 func Courses(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Поздравляем, Вы зарегестрированы!")
-}
 
-func UserLogout(w http.ResponseWriter, r *http.Request) {
-	ctx := context.Background()
-	dbpool := psql.Connect(ctx)
-	defer dbpool.Close()
-	DestroySession(w, r, dbpool)
-	http.Redirect(w, r, "/", http.StatusFound)
+	log.Println(http.StatusOK)
+
+	fmt.Fprintf(w, "Поздравляем, Вы зарегестрированы!")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+
 }
 
 func UserLogin(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	ctx := context.Background()
+	dbpool := psql.Connect(ctx)
+	defer dbpool.Close()
 
-	fmt.Fprintf(w, "This Login page")
+
+
+	var user model.User
+
+	// err := json.NewDecoder(r.Body).Decode(&user.Login)
+
+
+	LoginName, err := storage.UserProtected(user.Login)
+	
+	if err != nil {
+		log.Println("Ошибка при получении данных", err)
+	} else if err == nil {
+		fmt.Println("Данные успешно получены из функции дб")
+	}
+
+	fmt.Println(LoginName)
+
+	// salt := string(storage.DBPass[0:8])
+
+	// if !bytes.Equal(storage.HashPass(user.Password, salt), storage.DBPass) {
+	// 	http.Error(w, "Bad pass", http.StatusBadRequest)
+	// 	return
+	// }
+
+	CreateSession(w, r, dbpool, storage.UserID)
+	http.Redirect(w, r, "/courses", http.StatusFound)
 }
 
 func UserRegistration(w http.ResponseWriter, r *http.Request) {
@@ -176,4 +207,14 @@ func UserRegistration(w http.ResponseWriter, r *http.Request) {
 	CreateSession(w, r, dbpool, uint32(UserID))
 	http.Redirect(w, r, "/courses", http.StatusFound)
 
+}
+
+func UserLogout(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	ctx := context.Background()
+	dbpool := psql.Connect(ctx)
+	defer dbpool.Close()
+	DestroySession(w, r, dbpool)
+	http.Redirect(w, r, "/", http.StatusFound)
 }

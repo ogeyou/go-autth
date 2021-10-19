@@ -15,8 +15,9 @@ func main() {
 	ctx := context.Background()
 	dbpool := psql.Connect(ctx)
 	defer dbpool.Close()
-	
+
 	router := http.NewServeMux()
+
 
 	fmt.Println("Start server ...")
 	router.HandleFunc("/courses/", handlers.Courses)
