@@ -1,16 +1,24 @@
 package storage
 
 import (
+	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
+
 	"log"
 	"math/rand"
 	"net/http"
 
+	"github.com/jackc/pgx/v4"
 	"github.com/ogeyou/go-autth.git/model"
 	"github.com/ogeyou/go-autth.git/storage/psql"
 	"golang.org/x/crypto/argon2"
+)
+
+var (
+	DBPass []byte
+	UserID uint32
+	Email  string
 )
 
 // Добавляем соль к пароль
@@ -47,7 +55,7 @@ func UserCreated(user model.User) int64 {
 	salt := RandStringRunes(8)
 
 	pass := HashPass(user.Password, salt)
-	
+
 	var id int64
 
 	const sql = "INSERT INTO users (login, email, password) VALUES($1, $2, $3) RETURNING id"
@@ -64,39 +72,45 @@ func UserCreated(user model.User) int64 {
 	return UserID
 }
 
-var (
-	DBPass []byte
-	UserID uint32
-	Email  string
-)
-
 // Получаю данные при проверке логина пользователем из базы данных
-func UserProtected(login string) ([]model.User, error) {
+func UserProtected(login string) uint32 {
 	// Соединение с экземпляром Postgres
 	ctx := context.Background()
 	dbpool := psql.Connect(ctx)
 	defer dbpool.Close()
 
-	rows, err := dbpool.Query(ctx, "SELECT email, password FROM users WHERE login = $1", login)
-	if err != nil {
-		fmt.Println("WOW EROOR DATABASE", err)
-	}
+	var w http.ResponseWriter
+	var user model.User
+
+	const sql = "SELECT email, password dfgdfgdfg FROM users WHERE login = $1"
+
+	rows, err := dbpool.Query(ctx, sql, login)
 
 	res := []model.User{}
 
 	for rows.Next() {
 
-		err = rows.Scan(&UserID, &DBPass, &Email)
+		err = rows.Scan(&UserID, &DBPass)
+
+		if err == pgx.ErrNoRows {
+			log.Println("Ошибка при получении данных", err)
+		} else if err != nil {
+			fmt.Println("Данные успешно получены из функции дб")
+		}
+
+		salt := string(DBPass[0:8])
+
+		if !bytes.Equal(HashPass(user.Password, salt), DBPass) {
+			http.Error(w, "Bad pass", http.StatusBadRequest)
+		}
 
 		CoursesBook := model.User{
-			Email: Email,
+			Id:       int64(UserID),
+			Password: string(DBPass),
 		}
 
 		res = append(res, CoursesBook)
-		var r *http.Request
 
-		ggg := json.NewDecoder(r.Body).Decode(&res)
-		fmt.Println(ggg)
 	}
-	return res, err
+	return UserID
 }
