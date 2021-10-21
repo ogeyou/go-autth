@@ -79,13 +79,16 @@ func UserProtected(login string) uint32 {
 	dbpool := psql.Connect(ctx)
 	defer dbpool.Close()
 
-	var w http.ResponseWriter
+	
 	var user model.User
 
-	const sql = "SELECT email, password dfgdfgdfg FROM users WHERE login = $1"
+	const sql = "SELECT id, password FROM users WHERE login = $1"
 
 	rows, err := dbpool.Query(ctx, sql, login)
 
+	if err != nil{
+		panic(err)
+	}
 	res := []model.User{}
 
 	for rows.Next() {
@@ -99,7 +102,8 @@ func UserProtected(login string) uint32 {
 		}
 
 		salt := string(DBPass[0:8])
-
+		
+		var w http.ResponseWriter
 		if !bytes.Equal(HashPass(user.Password, salt), DBPass) {
 			http.Error(w, "Bad pass", http.StatusBadRequest)
 		}
@@ -110,7 +114,10 @@ func UserProtected(login string) uint32 {
 		}
 
 		res = append(res, CoursesBook)
-
+		if UserID == 0{
+			panic(UserID)
+		}
 	}
+
 	return UserID
 }

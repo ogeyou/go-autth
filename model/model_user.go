@@ -3,11 +3,11 @@ package model
 
 type User struct {
 
-	Id int64 `json:"id,omitempty"`
+	Id int64 `json:"id"`
 
-	Login string `json:"login,omitempty"`
+	Login string `json:"login"`
 
-	Email string `json:"email,omitempty"`
+	Email string `json:"email"`
 
-	Password string `json:"password,omitempty"`
+	Password string `json:"password"`
 }
