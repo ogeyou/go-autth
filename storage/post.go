@@ -58,9 +58,9 @@ func UserCreated(user model.User) int64 {
 
 	var id int64
 
-	const sql = "INSERT INTO users (login, email, password) VALUES($1, $2, $3) RETURNING id"
+	const sql = "INSERT INTO users (login, password) VALUES($1, $2) RETURNING id"
 
-	err := dbpool.QueryRow(ctx, sql, user.Login, user.Email, pass).Scan(&id)
+	err := dbpool.QueryRow(ctx, sql, user.Login, pass).Scan(&id)
 	var w http.ResponseWriter
 	if err != nil {
 		log.Println("Ощибка при добавлении нового пользователя в базу данных", err)
@@ -73,7 +73,7 @@ func UserCreated(user model.User) int64 {
 }
 
 // Получаю данные при проверке логина пользователем из базы данных
-func UserProtected(login string) uint32 {
+func UserProtected(login string, password string) uint32 {
 	// Соединение с экземпляром Postgres
 	ctx := context.Background()
 	dbpool := psql.Connect(ctx)
@@ -87,7 +87,7 @@ func UserProtected(login string) uint32 {
 	rows, err := dbpool.Query(ctx, sql, login)
 
 	if err != nil{
-		panic(err)
+		log.Print("Err select db", err)
 	}
 	res := []model.User{}
 

@@ -30,8 +30,8 @@ const sessionKey ctxKey = 1
 var (
 	noAuthUrls = map[string]struct{}{
 		"/user/login": struct{}{},
-		"/user/reg": struct{}{},
-		"/":         struct{}{},
+		"/user/reg":   struct{}{},
+		"/":           struct{}{},
 	}
 )
 
@@ -79,11 +79,6 @@ func CreateSession(w http.ResponseWriter, r *http.Request, dbpool *pgxpool.Pool,
 	ctx := context.Background()
 	defer dbpool.Close()
 	fmt.Println("Смотри, значение передается или нет куки", UserID)
-
-	if UserID == 0{
-		panic(UserID)
-	}
-	
 	sessID := storage.RandStringRunes(32)
 	_, err := dbpool.Exec(ctx, "insert into sessions(id, user_id) VALUES($1, $2)", sessID, UserID)
 	if err != nil {
@@ -139,30 +134,26 @@ func AuthMiddleware(dbpool *pgxpool.Pool, next http.Handler) http.Handler {
 	})
 }
 func Index(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+
 	_, err := SessionFromContext(r.Context())
 	if err != nil {
-		http.Redirect(w, r, "/user/login", http.StatusFound)
+		http.Redirect(w, r, "/user/login/", http.StatusFound)
 		return
 	}
 	http.Redirect(w, r, "/courses/", http.StatusFound)
 }
 
 func Courses(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 
 	log.Println(http.StatusOK)
 
 	fmt.Fprintf(w, "Поздравляем, Вы зарегестрированы!")
-
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 
 }
 
 func UserLogin(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+
 	ctx := context.Background()
 	dbpool := psql.Connect(ctx)
 	defer dbpool.Close()
@@ -172,13 +163,11 @@ func UserLogin(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		log.Printf("")
-	}
-
+	} 
 	LoginName := storage.UserProtected(user.Login)
 
 	CreateSession(w, r, dbpool, LoginName)
-
-	http.Redirect(w, r, "/courses/", http.StatusFound)
+	http.Redirect(w, r, "/courses", http.StatusFound)
 }
 
 func UserRegistration(w http.ResponseWriter, r *http.Request) {
@@ -193,15 +182,15 @@ func UserRegistration(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		log.Printf("")
-	} else if err == nil {
-		log.Print(err, user)
-	}
-
+		} else if err == nil {
+			log.Print(err, user)
+		}
+	
 	UserID := storage.UserCreated(user)
 	fmt.Println("Уже чуть ближе к успеху ", UserID)
 
 	CreateSession(w, r, dbpool, uint32(UserID))
-	http.Redirect(w, r, "/courses/", http.StatusFound)
+	http.Redirect(w, r, "/login", http.StatusFound)
 
 }
 
